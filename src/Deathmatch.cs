@@ -25,11 +25,18 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
     {
         if (_serviceProvider is null) return;
 
+        var config = _serviceProvider.GetRequiredService<IDeathmatchConfigService>();
+        config.LoadOrCreate();
+
         _commandHandlers = _serviceProvider.GetRequiredService<CommandHandlers>();
         _mapEventHandlers = _serviceProvider.GetRequiredService<MapEventHandlers>();
+        var damageReport = _serviceProvider.GetRequiredService<IDamageReportService>();
 
         _commandHandlers.Register();
         _mapEventHandlers.Register();
+
+        Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerHurt>(damageReport.OnPlayerHurt);
+        Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
 
         // Initial load if map is already loaded
         var mapName = (Core.Engine.GlobalVars.MapName.Value ?? string.Empty).Trim();
@@ -37,7 +44,7 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         {
             var mapConfig = _serviceProvider.GetRequiredService<IMapConfigService>();
             mapConfig.Load(mapName);
-            _mapEventHandlers.ApplyDeathmatchConvars();
+            config.ApplyToConvars();
         }
 
         Core.Logger.LogPluginInformation("Deathmatch: Plugin loaded successfully.");

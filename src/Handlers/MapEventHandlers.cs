@@ -7,11 +7,13 @@ namespace SwiftlyS2_Deathmatch.Handlers;
 public sealed class MapEventHandlers
 {
     private readonly IMapConfigService _mapConfig;
+    private readonly IDeathmatchConfigService _config;
     private readonly ISwiftlyCore _core;
 
-    public MapEventHandlers(IMapConfigService mapConfig, ISwiftlyCore core)
+    public MapEventHandlers(IMapConfigService mapConfig, IDeathmatchConfigService config, ISwiftlyCore core)
     {
         _mapConfig = mapConfig;
+        _config = config;
         _core = core;
     }
 
@@ -28,14 +30,7 @@ public sealed class MapEventHandlers
     private void OnMapLoad(IOnMapLoadEvent @event)
     {
         _mapConfig.Load(@event.MapName);
-        ApplyDeathmatchConvars();
-    }
-
-    public void ApplyDeathmatchConvars()
-    {
-        _core.Engine.ExecuteCommand("mp_buy_anywhere 1");
-        _core.Engine.ExecuteCommand("mp_buytime 9999");
-        _core.Engine.ExecuteCommand("mp_buy_during_radio_chat_time 9999");
-        _core.Engine.ExecuteCommand("mp_free_armor 2");
+        _config.ApplyToConvars();
     }
 }
+

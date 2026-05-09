@@ -43,7 +43,10 @@ public sealed class CommandHandlers
     private void EditSpawns(ICommandContext context)
     {
         _spawnViz.ShowSpawns();
-        context.Reply("Spawn editing mode enabled. Spawns are now visible.");
+        _core.Engine.ExecuteCommand("mp_warmup_pausetimer 1");
+        _core.Engine.ExecuteCommand("mp_warmuptime 999999");
+        _core.Engine.ExecuteCommand("mp_warmup_start");
+        context.Reply("Spawn editing mode enabled. Spawns are now visible and warmup started.");
     }
 
     private void AddSpawn(ICommandContext context)
@@ -199,6 +202,8 @@ public sealed class CommandHandlers
     private void StopEditing(ICommandContext context)
     {
         _spawnViz.HideSpawns();
-        context.Reply("Spawn editing mode disabled. Beams hidden.");
+        _core.Engine.ExecuteCommand("mp_warmup_pausetimer 0");
+        _core.Engine.ExecuteCommand("mp_warmup_end");
+        context.Reply("Spawn editing mode disabled. Beams hidden and warmup ended.");
     }
 }

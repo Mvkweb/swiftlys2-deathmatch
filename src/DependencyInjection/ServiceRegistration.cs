@@ -9,8 +9,10 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddDeathmatchServices(this IServiceCollection services)
     {
+        services.AddSingleton<IDeathmatchConfigService, DeathmatchConfigService>();
         services.AddSingleton<IMapConfigService, MapConfigService>();
         services.AddSingleton<ISpawnVisualizationService, SpawnVisualizationService>();
+        services.AddSingleton<IDamageReportService, DamageReportService>();
         
         services.AddSingleton<CommandHandlers>();
         services.AddSingleton<MapEventHandlers>();

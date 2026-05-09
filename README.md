@@ -6,6 +6,9 @@ A lightweight, high-performance Deathmatch plugin for Counter-Strike 2, built on
 
 *   **Integrated Spawn Editor**: Create and manage map-specific spawn points in-real-time.
 *   **Visual Feedback**: Beam-based visualization for spawns while editing.
+*   **Warmup Integration**: Automatically toggles warmup mode when editing spawns.
+*   **Damage Reports**: Detailed chat feedback on damage exchange (Gave/Took) upon death.
+*   **Global Configuration**: Customize chat prefix, armor levels, and buy settings via `config.json`.
 *   **Automatic Configuration**: Enforces standard Deathmatch cvars (Buy anywhere, infinite buy time, free armor).
 *   **High Performance**: Minimal overhead, leveraging the SwiftlyS2 C# API.
 
