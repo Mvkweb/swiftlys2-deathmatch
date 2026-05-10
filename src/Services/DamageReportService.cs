@@ -2,6 +2,7 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
+using SwiftlyS2.Shared.SchemaDefinitions;
 using SwiftlyS2_Deathmatch.Interfaces;
 using System.Collections.Generic;
 
@@ -72,6 +73,14 @@ public sealed class DamageReportService : IDamageReportService
             
             if (attackerKey != 0 && attackerKey != victimKey && attacker is not null && attacker.IsValid)
             {
+                if (_config.Config.GiveMediShotOnKill)
+                {
+                    if (attacker.PlayerPawn?.ItemServices is CCSPlayer_ItemServices itemServices)
+                    {
+                        itemServices.GiveItem("weapon_healthshot");
+                    }
+                }
+
                 var damageToAttacker = 0;
                 if (_damageMatrix.TryGetValue(victimKey, out var victimDealt) && victimDealt.TryGetValue(attackerKey, out var dmgTo))
                     damageToAttacker = dmgTo;
@@ -81,8 +90,8 @@ public sealed class DamageReportService : IDamageReportService
                     damageFromAttacker = dmgFrom;
 
                 var weaponName = weapon.Replace("weapon_", "");
-                victim.SendMessage(MessageType.Chat, $"{prefix} You were killed by {{green}}{attacker.Controller.PlayerName}{{default}} with {{lightred}}{weaponName}{{default}}.");
-                victim.SendMessage(MessageType.Chat, $"{prefix} {{lightred}}Took: {damageFromAttacker} damage{{default}} | {{green}}Gave: {damageToAttacker} damage{{default}}");
+                victim.SendChat($"{prefix} Killed by [green]{attacker.Controller.PlayerName}[default] ([lightred]{weaponName}[default])");
+                victim.SendChat($"{prefix} Gave: [green]{damageToAttacker}[default] dmg | Took: [lightred]{damageFromAttacker}[default] dmg");
             }
         }
 

@@ -13,9 +13,12 @@ public static class ServiceRegistration
         services.AddSingleton<IMapConfigService, MapConfigService>();
         services.AddSingleton<ISpawnVisualizationService, SpawnVisualizationService>();
         services.AddSingleton<IDamageReportService, DamageReportService>();
+        services.AddSingleton<ISpawnEvaluatorService, SpawnEvaluatorService>();
+        services.AddSingleton<IMessageSuppressionService, MessageSuppressionService>();
         
         services.AddSingleton<CommandHandlers>();
         services.AddSingleton<MapEventHandlers>();
+        services.AddSingleton<PlayerEventHandlers>();
         
         return services;
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -50,9 +51,54 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
 
     public void ApplyToConvars()
     {
+        // Force Game Mode to Deathmatch
+        _core.Engine.ExecuteCommand("game_type 1");
+        _core.Engine.ExecuteCommand("game_mode 2");
+        _core.Engine.ExecuteCommand("exec gamemode_deathmatch");
+
         _core.Engine.ExecuteCommand($"mp_buy_anywhere {(Config.EnableBuyAnywhere ? 1 : 0)}");
         _core.Engine.ExecuteCommand($"mp_buytime {Config.BuyTime}");
-        _core.Engine.ExecuteCommand($"mp_buy_during_radio_chat_time {Config.BuyTime}");
         _core.Engine.ExecuteCommand($"mp_free_armor {Config.FreeArmor}");
+        
+        // Force Deathmatch rules
+        _core.Engine.ExecuteCommand("mp_respawn_on_death_ct 1");
+        _core.Engine.ExecuteCommand("mp_respawn_on_death_t 1");
+        _core.Engine.ExecuteCommand("mp_ignore_round_win_conditions 1");
+        _core.Engine.ExecuteCommand("mp_halftime 0");
+        _core.Engine.ExecuteCommand("mp_match_can_clinch 0");
+        _core.Engine.ExecuteCommand("mp_roundtime 9999");
+        _core.Engine.ExecuteCommand("mp_maxrounds 9999");
+        _core.Engine.ExecuteCommand("mp_warmuptime 0");
+
+        // Fix Buy Menu in Deathmatch
+        _core.Engine.ExecuteCommand("sv_buy_status_override 0");
+        _core.Engine.ExecuteCommand("mp_buy_allow_guns 255");
+        
+        // Disable Deathmatch drops and random weapons
+        _core.Engine.ExecuteCommand("mp_death_drop_gun 0");
+        _core.Engine.ExecuteCommand("mp_death_drop_defuser 0");
+        _core.Engine.ExecuteCommand("mp_death_drop_grenade 0");
+        _core.Engine.ExecuteCommand("mp_drop_knife_enable 0");
+
+        // Clean up UI & Annoying elements
+        _core.Engine.ExecuteCommand("sv_disable_radar 1");
+        _core.Engine.ExecuteCommand("mp_display_kill_assists 0");
+        _core.Engine.ExecuteCommand("mp_dm_bonus_length_max 0");
+        _core.Engine.ExecuteCommand("mp_dm_bonus_length_min 0");
+        _core.Engine.ExecuteCommand("mp_dm_bonus_percent 0");
+        _core.Engine.ExecuteCommand("sv_gameinstructor_disable 1");
+
+        // Try to disable native chat point spam
+        _core.Engine.ExecuteCommand("mp_dm_kill_base_score 0");
+
+        // Disable native healthshots on 3-kill streak
+        _core.Engine.ExecuteCommand("mp_tdm_healthshot_killcount 9999");
+        _core.Engine.ExecuteCommand("mp_death_drop_healthshot 0");
+
+        // Disable chickens natively
+        _core.Engine.ExecuteCommand("sv_disable_chickens 1");
+
+        // Ensure warmup is completely killed
+        _core.Engine.ExecuteCommand("mp_warmup_end");
     }
 }

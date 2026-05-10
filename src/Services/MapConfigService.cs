@@ -37,6 +37,8 @@ public sealed class MapConfigService : IMapConfigService
         Clear();
         if (string.IsNullOrWhiteSpace(mapName)) return;
 
+        LoadedMapName = mapName;
+
         var mapPath = Path.Combine(_core.PluginPath, "resources", "maps", $"{mapName}.json");
         try
         {
