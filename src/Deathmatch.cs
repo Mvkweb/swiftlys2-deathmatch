@@ -39,11 +39,11 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
 
         // Initial load if map is already loaded
-        var mapName = (Core.Engine.GlobalVars.MapName.Value ?? string.Empty).Trim();
+        var mapName = Core.Engine?.GlobalVars?.MapName?.Value ?? string.Empty;
         if (!string.IsNullOrEmpty(mapName))
         {
             var mapConfig = _serviceProvider.GetRequiredService<IMapConfigService>();
-            mapConfig.Load(mapName);
+            mapConfig.Load(mapName.Trim());
             config.ApplyToConvars();
         }
 
