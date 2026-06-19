@@ -40,7 +40,11 @@ public sealed class MapEventHandlers
     private void OnMapLoad(IOnMapLoadEvent @event)
     {
         _mapConfig.Load(@event.MapName);
-        _config.ApplyToConvars();
+        _core.Scheduler.DelayBySeconds(2.0f, () =>
+        {
+            _config.ApplyToConvars();
+            _core.Engine.ExecuteCommand("mp_restartgame 1");
+        });
     }
 
     private HookResult OnRoundStart(EventRoundStart @event)
@@ -49,6 +53,12 @@ public sealed class MapEventHandlers
         _core.Engine.ExecuteCommand("mp_warmup_end");
         _core.Engine.ExecuteCommand($"mp_buytime {_config.Config.BuyTime}");
         _core.Engine.ExecuteCommand($"mp_buy_anywhere {(_config.Config.EnableBuyAnywhere ? 1 : 0)}");
+        _core.Engine.ExecuteCommand("mp_buy_during_immunity 0");
+        _core.Engine.ExecuteCommand("mp_timelimit 60");
+        _core.Engine.ExecuteCommand("mp_roundtime 60");
+        _core.Engine.ExecuteCommand("mp_roundtime_defuse 60");
+        _core.Engine.ExecuteCommand("mp_roundtime_hostage 60");
+        _core.Engine.ExecuteCommand("mp_freezetime 0");
         
         return HookResult.Continue;
     }

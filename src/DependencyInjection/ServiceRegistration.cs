@@ -15,6 +15,8 @@ public static class ServiceRegistration
         services.AddSingleton<IDamageReportService, DamageReportService>();
         services.AddSingleton<ISpawnEvaluatorService, SpawnEvaluatorService>();
         services.AddSingleton<IMessageSuppressionService, MessageSuppressionService>();
+        services.AddSingleton<IEloDatabaseService, EloDatabaseService>();
+        services.AddSingleton<IEloScoreService, EloScoreService>();
         
         services.AddSingleton<CommandHandlers>();
         services.AddSingleton<MapEventHandlers>();

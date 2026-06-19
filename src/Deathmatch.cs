@@ -2,10 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
+using SwiftlyS2.Shared.Events;
+using SwiftlyS2.Shared.Misc;
+using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2_Deathmatch.DependencyInjection;
 using SwiftlyS2_Deathmatch.Handlers;
 using SwiftlyS2_Deathmatch.Interfaces;
 using SwiftlyS2_Deathmatch.Logging;
+using System;
 
 namespace SwiftlyS2_Deathmatch;
 
@@ -17,6 +21,7 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
     private MapEventHandlers? _mapEventHandlers;
     private PlayerEventHandlers? _playerEventHandlers;
     private IMessageSuppressionService? _messageSuppressionService;
+    private Guid _decalHook;
 
     public SwiftlyS2_Deathmatch(ISwiftlyCore core) : base(core)
     {
@@ -35,6 +40,10 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         _playerEventHandlers = _serviceProvider.GetRequiredService<PlayerEventHandlers>();
         _messageSuppressionService = _serviceProvider.GetRequiredService<IMessageSuppressionService>();
         var damageReport = _serviceProvider.GetRequiredService<IDamageReportService>();
+        var eloDb = _serviceProvider.GetRequiredService<IEloDatabaseService>();
+
+        // We can't await inside Load, so we just task it
+        _ = eloDb.InitializeAsync();
 
         _commandHandlers.Register();
         _mapEventHandlers.Register();
@@ -43,6 +52,8 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
 
         Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerHurt>(damageReport.OnPlayerHurt);
         Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
+        
+        _decalHook = Core.NetMessage.HookServerMessage<CMsgPlaceDecalEvent>(OnPlaceDecal);
 
         // Initial load if map is already loaded
         Core.Scheduler.NextTick(() =>
@@ -73,6 +84,12 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         _playerEventHandlers?.Unregister();
         _messageSuppressionService?.Unregister();
 
+        if (_decalHook != Guid.Empty)
+        {
+            Core.NetMessage.Unhook(_decalHook);
+            _decalHook = Guid.Empty;
+        }
+
         _commandHandlers = null;
         _mapEventHandlers = null;
         _playerEventHandlers = null;
@@ -80,5 +97,42 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
 
         ServiceProviderFactory.DisposeServiceProvider(_serviceProvider);
         _serviceProvider = null;
+    }
+
+    [EventListener<EventDelegates.OnEntitySpawned>]
+    public void OnEntitySpawned(IOnEntitySpawnedEvent @event)
+    {
+        if (_serviceProvider == null) return;
+        var configService = _serviceProvider.GetService<IDeathmatchConfigService>();
+        if (configService == null) return;
+
+        var entity = @event.Entity;
+        if (entity == null) return;
+
+        var name = entity.DesignerName;
+        if (string.IsNullOrEmpty(name)) return;
+
+        if (name == "chicken" || name.Contains("ragdoll", StringComparison.OrdinalIgnoreCase) || 
+            name.Contains("decal", StringComparison.OrdinalIgnoreCase) || name.Contains("blood", StringComparison.OrdinalIgnoreCase))
+        {
+            Core.Scheduler.DelayBySeconds(0.5f, () =>
+            {
+                if (entity != null && entity.IsValid)
+                {
+                    entity.AcceptInput<string>("Kill", null);
+                }
+            });
+            return;
+        }
+
+        if (name == "weapon_healthshot" && configService.Config.RemoveMediShots)
+        {
+            entity.AcceptInput<string>("Kill", null);
+        }
+    }
+
+    private HookResult OnPlaceDecal(CMsgPlaceDecalEvent msg)
+    {
+        return HookResult.Stop;
     }
 }

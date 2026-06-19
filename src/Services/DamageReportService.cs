@@ -4,6 +4,7 @@ using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.SchemaDefinitions;
 using SwiftlyS2_Deathmatch.Interfaces;
+using System;
 using System.Collections.Generic;
 
 namespace SwiftlyS2_Deathmatch.Services;
@@ -12,14 +13,16 @@ public sealed class DamageReportService : IDamageReportService
 {
     private readonly ISwiftlyCore _core;
     private readonly IDeathmatchConfigService _config;
+    private readonly IEloScoreService _eloScoreService;
 
     // AttackerSteamId -> VictimSteamId -> DamageDealt
     private readonly Dictionary<ulong, Dictionary<ulong, int>> _damageMatrix = new();
 
-    public DamageReportService(ISwiftlyCore core, IDeathmatchConfigService config)
+    public DamageReportService(ISwiftlyCore core, IDeathmatchConfigService config, IEloScoreService eloScoreService)
     {
         _core = core;
         _config = config;
+        _eloScoreService = eloScoreService;
     }
 
     private ulong GetPlayerKey(IPlayer? player)
@@ -58,7 +61,7 @@ public sealed class DamageReportService : IDamageReportService
         var attacker = @event.AttackerPlayer;
         var weapon = @event.Weapon;
 
-        if (!_config.Config.EnableDamageReports)
+        if (!_config.Config.EnableDamageReports && !_config.Config.EnableEloSystem)
         {
              ClearPlayerData(GetPlayerKey(victim));
              return HookResult.Continue;
@@ -81,17 +84,49 @@ public sealed class DamageReportService : IDamageReportService
                     }
                 }
 
-                var damageToAttacker = 0;
-                if (_damageMatrix.TryGetValue(victimKey, out var victimDealt) && victimDealt.TryGetValue(attackerKey, out var dmgTo))
-                    damageToAttacker = dmgTo;
+                if (_config.Config.HealthOnKill > 0)
+                {
+                    var pawn = attacker.PlayerPawn;
+                    if (pawn != null && pawn.IsValid)
+                    {
+                        pawn.Health = Math.Min(_config.Config.MaxHealth, pawn.Health + _config.Config.HealthOnKill);
+                    }
+                }
 
-                var damageFromAttacker = 0;
-                if (_damageMatrix.TryGetValue(attackerKey, out var attackerDealt) && attackerDealt.TryGetValue(victimKey, out var dmgFrom))
-                    damageFromAttacker = dmgFrom;
+                if (_config.Config.RefillAmmoOnKill)
+                {
+                    var weaponHandle = attacker.PlayerPawn?.WeaponServices?.ActiveWeapon;
+                    if (weaponHandle.HasValue && weaponHandle.Value.IsValid)
+                    {
+                        var wpn = weaponHandle.Value.Value;
+                        if (wpn != null && wpn.PlayerWeaponVData != null)
+                        {
+                            wpn.Clip1 = wpn.PlayerWeaponVData.MaxClip1;
+                        }
+                    }
+                }
 
-                var weaponName = weapon.Replace("weapon_", "");
-                victim.SendChat($"{prefix} Killed by [green]{attacker.Controller.PlayerName}[default] ([lightred]{weaponName}[default])");
-                victim.SendChat($"{prefix} Gave: [green]{damageToAttacker}[default] dmg | Took: [lightred]{damageFromAttacker}[default] dmg");
+                _eloScoreService.AwardKillScore(attacker, @event.Headshot);
+                _eloScoreService.DeductDeathScore(victim);
+
+                if (_config.Config.EnableDamageReports)
+                {
+                    var damageToAttacker = 0;
+                    if (_damageMatrix.TryGetValue(victimKey, out var victimDealt) && victimDealt.TryGetValue(attackerKey, out var dmgTo))
+                        damageToAttacker = dmgTo;
+
+                    var damageFromAttacker = 0;
+                    if (_damageMatrix.TryGetValue(attackerKey, out var attackerDealt) && attackerDealt.TryGetValue(victimKey, out var dmgFrom))
+                        damageFromAttacker = dmgFrom;
+
+                    var weaponName = weapon.Replace("weapon_", "");
+                    victim.SendChat($"{prefix} Killed by [green]{attacker.Controller.PlayerName}[default] ([lightred]{weaponName}[default])");
+                    victim.SendChat($"{prefix} Gave: [green]{damageToAttacker}[default] dmg | Took: [lightred]{damageFromAttacker}[default] dmg");
+                }
+            }
+            else if (attackerKey != victimKey && attackerKey == 0) // e.g. world spawn, falling
+            {
+                _eloScoreService.DeductDeathScore(victim);
             }
         }
 

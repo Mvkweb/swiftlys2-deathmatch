@@ -2,6 +2,7 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Natives;
+using SwiftlyS2.Shared.Misc;
 using SwiftlyS2_Deathmatch.Interfaces;
 
 namespace SwiftlyS2_Deathmatch.Handlers;
@@ -12,6 +13,7 @@ public sealed class CommandHandlers
     private readonly ISpawnVisualizationService _spawnViz;
     private readonly ISwiftlyCore _core;
     private readonly List<Guid> _commandGuids = new();
+    private Guid _clientCmdHook;
 
     public CommandHandlers(IMapConfigService mapConfig, ISpawnVisualizationService spawnViz, ISwiftlyCore core)
     {
@@ -29,6 +31,8 @@ public sealed class CommandHandlers
         _commandGuids.Add(_core.Command.RegisterCommand("gotospawn", GotoSpawn, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("savespawns", SaveSpawns, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("stopediting", StopEditing, permission: "root"));
+
+        _clientCmdHook = _core.Command.HookClientCommand(OnClientCommand);
     }
 
     public void Unregister()
@@ -38,6 +42,12 @@ public sealed class CommandHandlers
             _core.Command.UnregisterCommand(guid);
         }
         _commandGuids.Clear();
+
+        if (_clientCmdHook != Guid.Empty)
+        {
+            _core.Command.UnhookClientCommand(_clientCmdHook);
+            _clientCmdHook = Guid.Empty;
+        }
     }
 
     private void EditSpawns(ICommandContext context)
@@ -206,5 +216,20 @@ public sealed class CommandHandlers
         _core.Engine.ExecuteCommand("bot_zombie 0");
         _core.Engine.ExecuteCommand("bot_stop 0");
         context.Reply("Spawn editing mode disabled. Beams hidden and bots are active.");
+    }
+
+    public HookResult OnClientCommand(int playerId, string commandLine)
+    {
+        if (commandLine.Trim().StartsWith("drop", StringComparison.OrdinalIgnoreCase))
+        {
+            var player = _core.PlayerManager.GetPlayer(playerId);
+            if (player != null && player.IsValid)
+            {
+                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, "[green][Deathmatch][white] Weapon drops are disabled!");
+                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, "[green]Available Commands:[white] !guns, !settings (Placeholder)");
+            }
+            return HookResult.Stop;
+        }
+        return HookResult.Continue;
     }
 }

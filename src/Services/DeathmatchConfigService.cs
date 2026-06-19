@@ -42,6 +42,10 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
                     }
                 }
             }
+
+            // Reserialize back to disk to populate any missing fields automatically
+            var newJson = JsonSerializer.Serialize(new { deathmatch = Config }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            File.WriteAllText(configPath, newJson);
         }
         catch (Exception ex)
         {
@@ -58,6 +62,7 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
 
         _core.Engine.ExecuteCommand($"mp_buy_anywhere {(Config.EnableBuyAnywhere ? 1 : 0)}");
         _core.Engine.ExecuteCommand($"mp_buytime {Config.BuyTime}");
+        _core.Engine.ExecuteCommand("mp_buy_during_immunity 0");
         _core.Engine.ExecuteCommand($"mp_free_armor {Config.FreeArmor}");
         
         // Force Deathmatch rules
@@ -66,9 +71,12 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
         _core.Engine.ExecuteCommand("mp_ignore_round_win_conditions 1");
         _core.Engine.ExecuteCommand("mp_halftime 0");
         _core.Engine.ExecuteCommand("mp_match_can_clinch 0");
-        _core.Engine.ExecuteCommand("mp_roundtime 9999");
+        _core.Engine.ExecuteCommand("mp_roundtime 60");
+        _core.Engine.ExecuteCommand("mp_roundtime_defuse 60");
+        _core.Engine.ExecuteCommand("mp_roundtime_hostage 60");
+        _core.Engine.ExecuteCommand("mp_timelimit 60");
         _core.Engine.ExecuteCommand("mp_maxrounds 9999");
-        _core.Engine.ExecuteCommand("mp_warmuptime 0");
+        _core.Engine.ExecuteCommand("mp_freezetime 0");
 
         // Fix Buy Menu in Deathmatch
         _core.Engine.ExecuteCommand("sv_buy_status_override 0");
@@ -88,12 +96,12 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
         _core.Engine.ExecuteCommand("mp_dm_bonus_percent 0");
         _core.Engine.ExecuteCommand("sv_gameinstructor_disable 1");
 
-        // Try to disable native chat point spam
-        _core.Engine.ExecuteCommand("mp_dm_kill_base_score 0");
-
         // Disable native healthshots on 3-kill streak
         _core.Engine.ExecuteCommand("mp_tdm_healthshot_killcount 9999");
         _core.Engine.ExecuteCommand("mp_death_drop_healthshot 0");
+
+        // Restore default deathmatch points so scoreboard works
+        _core.Engine.ExecuteCommand("mp_dm_kill_base_score 10");
 
         // Disable chickens natively
         _core.Engine.ExecuteCommand("sv_disable_chickens 1");
