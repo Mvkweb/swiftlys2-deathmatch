@@ -192,7 +192,7 @@ public sealed class PlayerEventHandlers
         }
 
         // Respawn immediately — new pawn created, old one dies silently (skips ragdoll entirely)
-        _core.Scheduler.DelayBySeconds(0.1f, () =>
+        _core.Scheduler.DelayBySeconds(0.25f, () =>
         {
              if (victim.IsValid)
              {
@@ -200,7 +200,7 @@ public sealed class PlayerEventHandlers
              }
         });
 
-        return HookResult.Continue;
+        return _config.Config.OnlyShowPlayerKillfeed ? HookResult.Stop : HookResult.Continue;
     }
 
     private HookResult OnPlayerConnectFull(EventPlayerConnectFull @event)

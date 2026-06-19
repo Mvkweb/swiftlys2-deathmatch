@@ -112,16 +112,9 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         var name = entity.DesignerName;
         if (string.IsNullOrEmpty(name)) return;
 
-        if (name == "chicken" || name.Contains("ragdoll", StringComparison.OrdinalIgnoreCase) || 
-            name.Contains("decal", StringComparison.OrdinalIgnoreCase) || name.Contains("blood", StringComparison.OrdinalIgnoreCase))
+        if (name == "chicken")
         {
-            Core.Scheduler.DelayBySeconds(0.5f, () =>
-            {
-                if (entity != null && entity.IsValid)
-                {
-                    entity.AcceptInput<string>("Kill", null);
-                }
-            });
+            entity.AcceptInput<string>("Kill", null);
             return;
         }
 
