@@ -73,6 +73,7 @@ public sealed class EloScoreService : IEloScoreService
         
         _playerScores[steamId] = newScore;
         UpdatePlayerControllerScore(attacker, newScore);
+        _ = _db.SavePlayerScoreAsync(steamId, newScore);
     }
 
     public void DeductDeathScore(IPlayer victim)
@@ -87,13 +88,16 @@ public sealed class EloScoreService : IEloScoreService
         
         _playerScores[steamId] = newScore;
         UpdatePlayerControllerScore(victim, newScore);
+        _ = _db.SavePlayerScoreAsync(steamId, newScore);
     }
 
     private void UpdatePlayerControllerScore(IPlayer player, int newScore)
     {
-        if (player.Controller is not null)
-        {
-            player.Controller.Score = newScore;
-        }
+        _core.Scheduler.NextTick(() => {
+            if (player.Controller is not null)
+            {
+                player.Controller.Score = newScore;
+            }
+        });
     }
 }

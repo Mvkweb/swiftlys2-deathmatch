@@ -17,6 +17,7 @@ public static class ServiceRegistration
         services.AddSingleton<IMessageSuppressionService, MessageSuppressionService>();
         services.AddSingleton<IEloDatabaseService, EloDatabaseService>();
         services.AddSingleton<IEloScoreService, EloScoreService>();
+        services.AddSingleton<IWeaponLoadoutService, WeaponLoadoutService>();
         
         services.AddSingleton<CommandHandlers>();
         services.AddSingleton<MapEventHandlers>();

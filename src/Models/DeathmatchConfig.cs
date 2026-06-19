@@ -19,5 +19,6 @@ public sealed class DeathmatchConfig
     public int EloOnKill { get; set; } = 2;
     public int EloOnHeadshot { get; set; } = 3;
     public int EloOnDeath { get; set; } = -2;
-    public string DatabaseConnection { get; set; } = "default";
+    public string DatabaseType { get; set; } = "sqlite";
+    public string DatabaseConnection { get; set; } = "deathmatch_elo";
 }

@@ -51,7 +51,7 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
         _messageSuppressionService.Register();
 
         Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerHurt>(damageReport.OnPlayerHurt);
-        Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
+        Core.GameEvent.HookPre<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
         
         _decalHook = Core.NetMessage.HookServerMessage<CMsgPlaceDecalEvent>(OnPlaceDecal);
 

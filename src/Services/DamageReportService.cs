@@ -33,14 +33,21 @@ public sealed class DamageReportService : IDamageReportService
 
     public HookResult OnPlayerHurt(EventPlayerHurt @event)
     {
-        if (!_config.Config.EnableDamageReports) return HookResult.Continue;
-
         var victim = @event.UserIdPlayer;
         var attacker = @event.AttackerPlayer;
         var damage = @event.ActualDmgHealth;
         
         var attackerKey = GetPlayerKey(attacker);
         var victimKey = GetPlayerKey(victim);
+
+        if (attackerKey != 0 && victimKey != 0 && attackerKey != victimKey)
+        {
+            // Removed HealthOnKill logic from here
+        }
+
+        if (!_config.Config.EnableDamageReports) return HookResult.Continue;
+        
+        if (!_config.Config.EnableDamageReports) return HookResult.Continue;
 
         if (attackerKey == 0 || victimKey == 0 || attackerKey == victimKey) return HookResult.Continue;
 
@@ -84,27 +91,7 @@ public sealed class DamageReportService : IDamageReportService
                     }
                 }
 
-                if (_config.Config.HealthOnKill > 0)
-                {
-                    var pawn = attacker.PlayerPawn;
-                    if (pawn != null && pawn.IsValid)
-                    {
-                        pawn.Health = Math.Min(_config.Config.MaxHealth, pawn.Health + _config.Config.HealthOnKill);
-                    }
-                }
 
-                if (_config.Config.RefillAmmoOnKill)
-                {
-                    var weaponHandle = attacker.PlayerPawn?.WeaponServices?.ActiveWeapon;
-                    if (weaponHandle.HasValue && weaponHandle.Value.IsValid)
-                    {
-                        var wpn = weaponHandle.Value.Value;
-                        if (wpn != null && wpn.PlayerWeaponVData != null)
-                        {
-                            wpn.Clip1 = wpn.PlayerWeaponVData.MaxClip1;
-                        }
-                    }
-                }
 
                 _eloScoreService.AwardKillScore(attacker, @event.Headshot);
                 _eloScoreService.DeductDeathScore(victim);

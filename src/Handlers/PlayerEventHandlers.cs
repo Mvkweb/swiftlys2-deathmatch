@@ -16,26 +16,32 @@ public sealed class PlayerEventHandlers
     private readonly ISpawnEvaluatorService _spawnEvaluator;
     private readonly IEloScoreService _eloScoreService;
     private readonly IDeathmatchConfigService _config;
+    private readonly IWeaponLoadoutService _weaponLoadout;
     private Guid _playerSpawnPostHook;
     private Guid _playerDeathPreHook;
+    private Guid _playerHurtPreHook;
     private Guid _playerConnectFullHook;
     private Guid _playerDisconnectHook;
+    private Guid _weaponFireHook;
     private bool _isSimulatedKillfeed = false;
 
-    public PlayerEventHandlers(ISwiftlyCore core, ISpawnEvaluatorService spawnEvaluator, IEloScoreService eloScoreService, IDeathmatchConfigService config)
+    public PlayerEventHandlers(ISwiftlyCore core, ISpawnEvaluatorService spawnEvaluator, IEloScoreService eloScoreService, IDeathmatchConfigService config, IWeaponLoadoutService weaponLoadout)
     {
         _core = core;
         _spawnEvaluator = spawnEvaluator;
         _eloScoreService = eloScoreService;
         _config = config;
+        _weaponLoadout = weaponLoadout;
     }
 
     public void Register()
     {
         _playerSpawnPostHook = _core.GameEvent.HookPost<EventPlayerSpawn>(OnPlayerSpawnPost);
+        _playerHurtPreHook = _core.GameEvent.HookPre<EventPlayerHurt>(OnPlayerHurtPre);
         _playerDeathPreHook = _core.GameEvent.HookPre<EventPlayerDeath>(OnPlayerDeathPre);
         _playerConnectFullHook = _core.GameEvent.HookPost<EventPlayerConnectFull>(OnPlayerConnectFull);
         _playerDisconnectHook = _core.GameEvent.HookPost<EventPlayerDisconnect>(OnPlayerDisconnect);
+        _weaponFireHook = _core.GameEvent.HookPost<EventWeaponFire>(OnWeaponFire);
     }
 
     public void Unregister()
@@ -44,6 +50,11 @@ public sealed class PlayerEventHandlers
         {
             _core.GameEvent.Unhook(_playerSpawnPostHook);
             _playerSpawnPostHook = Guid.Empty;
+        }
+        if (_playerHurtPreHook != Guid.Empty)
+        {
+            _core.GameEvent.Unhook(_playerHurtPreHook);
+            _playerHurtPreHook = Guid.Empty;
         }
         if (_playerDeathPreHook != Guid.Empty)
         {
@@ -59,6 +70,11 @@ public sealed class PlayerEventHandlers
         {
             _core.GameEvent.Unhook(_playerDisconnectHook);
             _playerDisconnectHook = Guid.Empty;
+        }
+        if (_weaponFireHook != Guid.Empty)
+        {
+            _core.GameEvent.Unhook(_weaponFireHook);
+            _weaponFireHook = Guid.Empty;
         }
     }
 
@@ -79,10 +95,62 @@ public sealed class PlayerEventHandlers
                 if (player is not null && player.IsValid && player.PlayerPawn is not null)
                 {
                     player.Teleport(bestSpawn.Position, bestSpawn.Angle, Vector.Zero);
+                    _weaponLoadout.RestorePlayerLoadout(player);
                 }
             });
         }
+        else
+        {
+            // Even if no custom spawn point, restore loadout
+            _core.Scheduler.NextTick(() =>
+            {
+                if (player is not null && player.IsValid && player.PlayerPawn is not null)
+                {
+                    _weaponLoadout.RestorePlayerLoadout(player);
+                }
+            });
+        }
+        
+        _eloScoreService.ApplyCachedScore(player);
 
+        return HookResult.Continue;
+    }
+
+    private HookResult OnPlayerHurtPre(EventPlayerHurt @event)
+    {
+        if (@event.ActualHealth == 0)
+        {
+            var victim = @event.UserIdPlayer;
+            if (victim != null && victim.IsValid)
+            {
+                // Cache weapons exactly when they receive the fatal blow, BEFORE the engine drops them
+                _weaponLoadout.SavePlayerLoadout(victim);
+            }
+
+            // Heal and refill ammo for attacker instantly
+            var attacker = @event.AttackerPlayer;
+            if (attacker != null && attacker.IsValid && attacker != victim)
+            {
+                var pawn = attacker.PlayerPawn;
+                if (pawn != null && pawn.IsValid)
+                {
+                    if (_config.Config.HealthOnKill > 0)
+                    {
+                        pawn.Health = Math.Min(_config.Config.MaxHealth, pawn.Health + _config.Config.HealthOnKill);
+                    }
+
+                    var weaponHandle = pawn.WeaponServices?.ActiveWeapon;
+                    if (weaponHandle.HasValue && weaponHandle.Value.IsValid)
+                    {
+                        var wpn = weaponHandle.Value.Value;
+                        if (wpn != null)
+                        {
+                            wpn.Clip1 = 30;
+                        }
+                    }
+                }
+            }
+        }
         return HookResult.Continue;
     }
 
@@ -150,7 +218,26 @@ public sealed class PlayerEventHandlers
         var player = @event.UserIdPlayer;
         if (player is not null && player.IsValid)
         {
+            _weaponLoadout.ClearPlayerLoadout(player);
             _ = _eloScoreService.OnClientDisconnectAsync(player);
+        }
+        return HookResult.Continue;
+    }
+
+    private HookResult OnWeaponFire(EventWeaponFire @event)
+    {
+        var player = @event.UserIdPlayer;
+        if (player is not null && player.IsValid && player.PlayerPawn is not null)
+        {
+            var weaponHandle = player.PlayerPawn.WeaponServices?.ActiveWeapon;
+            if (weaponHandle.HasValue && weaponHandle.Value.IsValid)
+            {
+                var wpn = weaponHandle.Value.Value;
+                if (wpn != null)
+                {
+                    wpn.ReserveAmmo[0] = 3;
+                }
+            }
         }
         return HookResult.Continue;
     }
