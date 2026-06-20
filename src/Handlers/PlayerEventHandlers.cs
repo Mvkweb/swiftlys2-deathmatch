@@ -178,12 +178,12 @@ public sealed class PlayerEventHandlers
                 ev.Headshot = @event.Headshot;
             };
 
-            if (attackerSlot >= 0)
+            if (attackerSlot >= 0 && attacker != null && !attacker.IsFakeClient)
             {
                 _core.GameEvent.FireToPlayer<EventPlayerDeath>(attackerSlot, cloneProps);
             }
 
-            if (victimSlot >= 0 && victimSlot != attackerSlot)
+            if (victimSlot >= 0 && victimSlot != attackerSlot && !victim.IsFakeClient)
             {
                 _core.GameEvent.FireToPlayer<EventPlayerDeath>(victimSlot, cloneProps);
             }
