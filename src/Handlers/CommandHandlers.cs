@@ -12,14 +12,16 @@ public sealed class CommandHandlers
     private readonly IMapConfigService _mapConfig;
     private readonly ISpawnVisualizationService _spawnViz;
     private readonly ISwiftlyCore _core;
+    private readonly IEloScoreService _eloScoreService;
     private readonly List<Guid> _commandGuids = new();
     private Guid _clientCmdHook;
 
-    public CommandHandlers(IMapConfigService mapConfig, ISpawnVisualizationService spawnViz, ISwiftlyCore core)
+    public CommandHandlers(IMapConfigService mapConfig, ISpawnVisualizationService spawnViz, ISwiftlyCore core, IEloScoreService eloScoreService)
     {
         _mapConfig = mapConfig;
         _spawnViz = spawnViz;
         _core = core;
+        _eloScoreService = eloScoreService;
     }
 
     public void Register()
@@ -31,6 +33,7 @@ public sealed class CommandHandlers
         _commandGuids.Add(_core.Command.RegisterCommand("gotospawn", GotoSpawn, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("savespawns", SaveSpawns, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("stopediting", StopEditing, permission: "root"));
+        _commandGuids.Add(_core.Command.RegisterCommand("stats", ShowStats));
 
         _clientCmdHook = _core.Command.HookClientCommand(OnClientCommand);
     }
@@ -216,6 +219,35 @@ public sealed class CommandHandlers
         _core.Engine.ExecuteCommand("bot_zombie 0");
         _core.Engine.ExecuteCommand("bot_stop 0");
         context.Reply("Spawn editing mode disabled. Beams hidden and bots are active.");
+    }
+
+    private void ShowStats(ICommandContext context)
+    {
+        var player = context.Sender;
+        if (player is null || !player.IsValid) return;
+
+        var stats = _eloScoreService.GetStats(player.SteamID);
+        if (stats is null)
+        {
+            context.Reply("[grey]• [white]No stats available yet. Start playing to earn Elo!");
+            return;
+        }
+
+        double kdr = stats.TotalDeaths > 0 ? (double)stats.TotalKills / stats.TotalDeaths : stats.TotalKills;
+        int hours = stats.CurrentPlaytime / 3600;
+        int minutes = (stats.CurrentPlaytime % 3600) / 60;
+
+        string sessionKills = stats.SessionKills > 0 ? $"[[green]+{stats.SessionKills}[white]]" : "[[grey]0[white]]";
+        string sessionDeaths = stats.SessionDeaths > 0 ? $"[[lightred]-{stats.SessionDeaths}[white]]" : "[[grey]0[white]]";
+
+        player.SendMessage(MessageType.Chat, " ");
+        player.SendMessage(MessageType.Chat, "[grey]• [gold]Your Statistics:");
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]Elo Rating: [gold]{stats.Score} [white](Peak: [gold]{stats.PeakScore}[white])");
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]Kills: [green]{stats.TotalKills} [white]{sessionKills}");
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]Deaths: [lightred]{stats.TotalDeaths} [white]{sessionDeaths}");
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]KDR: [green]{kdr:F2}");
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]Playtime: [magenta]{hours}h {minutes}m");
+        player.SendMessage(MessageType.Chat, " ");
     }
 
     public HookResult OnClientCommand(int playerId, string commandLine)

@@ -174,6 +174,7 @@ public sealed class PlayerEventHandlers
             Action<EventPlayerDeath> cloneProps = ev => {
                 ev.UserId = @event.UserId;
                 ev.Attacker = @event.Attacker;
+                ev.Assister = -1;
                 ev.Weapon = @event.Weapon;
                 ev.Headshot = @event.Headshot;
             };

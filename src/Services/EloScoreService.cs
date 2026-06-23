@@ -3,6 +3,7 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2_Deathmatch.Interfaces;
 using SwiftlyS2_Deathmatch.Logging;
+using SwiftlyS2_Deathmatch.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ public sealed class EloScoreService : IEloScoreService
     private readonly IDeathmatchConfigService _config;
     private readonly IEloDatabaseService _db;
     
-    private readonly ConcurrentDictionary<ulong, int> _playerScores = new();
+    private readonly ConcurrentDictionary<ulong, PlayerStats> _playerStats = new();
 
     public EloScoreService(ISwiftlyCore core, IDeathmatchConfigService config, IEloDatabaseService db)
     {
@@ -31,8 +32,11 @@ public sealed class EloScoreService : IEloScoreService
         var steamId = player.SteamID;
         if (steamId == 0) return;
 
-        var score = await _db.GetPlayerScoreAsync(steamId);
-        _playerScores[steamId] = score;
+        var stats = await _db.GetPlayerStatsAsync(steamId);
+        stats.ConnectTime = DateTime.UtcNow;
+        stats.SessionKills = 0;
+        stats.SessionDeaths = 0;
+        _playerStats[steamId] = stats;
 
         // Apply immediately if already spawned
         _core.Scheduler.NextTick(() => ApplyCachedScore(player));
@@ -43,10 +47,12 @@ public sealed class EloScoreService : IEloScoreService
         if (!_config.Config.EnableEloSystem || player.IsFakeClient || player.SteamID == 0) return;
 
         var steamId = player.SteamID;
-        if (steamId != 0 && _playerScores.TryGetValue(steamId, out var score))
+        if (steamId != 0 && _playerStats.TryGetValue(steamId, out var stats))
         {
-            await _db.SavePlayerScoreAsync(steamId, score);
-            _playerScores.TryRemove(steamId, out _);
+            stats.TotalPlaytime += (int)(DateTime.UtcNow - stats.ConnectTime).TotalSeconds;
+            stats.ConnectTime = DateTime.UtcNow; // prevent double counting if saved again
+            await _db.SavePlayerStatsAsync(steamId, stats);
+            _playerStats.TryRemove(steamId, out _);
         }
     }
 
@@ -54,9 +60,9 @@ public sealed class EloScoreService : IEloScoreService
     {
         if (!_config.Config.EnableEloSystem) return;
 
-        if (!player.IsFakeClient && player.SteamID != 0 && _playerScores.TryGetValue(player.SteamID, out var score))
+        if (!player.IsFakeClient && player.SteamID != 0 && _playerStats.TryGetValue(player.SteamID, out var stats))
         {
-            UpdatePlayerControllerScore(player, score);
+            UpdatePlayerControllerScore(player, stats.Score);
         }
     }
 
@@ -65,15 +71,17 @@ public sealed class EloScoreService : IEloScoreService
         if (!_config.Config.EnableEloSystem || attacker.IsFakeClient || attacker.SteamID == 0) return;
 
         var steamId = attacker.SteamID;
-        if (steamId == 0) return;
+        if (steamId == 0 || !_playerStats.TryGetValue(steamId, out var stats)) return;
 
-        var currentScore = _playerScores.GetOrAdd(steamId, 0);
         var delta = isHeadshot ? _config.Config.EloOnHeadshot : _config.Config.EloOnKill;
-        var newScore = currentScore + delta;
+        stats.Score += delta;
+        if (stats.Score > stats.PeakScore) stats.PeakScore = stats.Score;
         
-        _playerScores[steamId] = newScore;
-        UpdatePlayerControllerScore(attacker, newScore);
-        _ = _db.SavePlayerScoreAsync(steamId, newScore);
+        stats.TotalKills++;
+        stats.SessionKills++;
+        
+        UpdatePlayerControllerScore(attacker, stats.Score);
+        _ = _db.SavePlayerStatsAsync(steamId, stats);
     }
 
     public void DeductDeathScore(IPlayer victim)
@@ -81,14 +89,16 @@ public sealed class EloScoreService : IEloScoreService
         if (!_config.Config.EnableEloSystem || victim.IsFakeClient || victim.SteamID == 0) return;
 
         var steamId = victim.SteamID;
-        if (steamId == 0) return;
+        if (steamId == 0 || !_playerStats.TryGetValue(steamId, out var stats)) return;
 
-        var currentScore = _playerScores.GetOrAdd(steamId, 0);
-        var newScore = currentScore + _config.Config.EloOnDeath;
+        stats.Score += _config.Config.EloOnDeath;
+        if (stats.Score > stats.PeakScore) stats.PeakScore = stats.Score;
         
-        _playerScores[steamId] = newScore;
-        UpdatePlayerControllerScore(victim, newScore);
-        _ = _db.SavePlayerScoreAsync(steamId, newScore);
+        stats.TotalDeaths++;
+        stats.SessionDeaths++;
+        
+        UpdatePlayerControllerScore(victim, stats.Score);
+        _ = _db.SavePlayerStatsAsync(steamId, stats);
     }
 
     private void UpdatePlayerControllerScore(IPlayer player, int newScore)
@@ -99,5 +109,10 @@ public sealed class EloScoreService : IEloScoreService
                 player.Controller.Score = newScore;
             }
         });
+    }
+
+    public PlayerStats? GetStats(ulong steamId)
+    {
+        return _playerStats.TryGetValue(steamId, out var stats) ? stats : null;
     }
 }

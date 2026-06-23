@@ -47,11 +47,15 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
 
         _commandHandlers.Register();
         _mapEventHandlers.Register();
-        _playerEventHandlers.Register();
-        _messageSuppressionService.Register();
-
+        
+        // IMPORTANT: DamageReportService must hook BEFORE PlayerEventHandlers
+        // because PlayerEventHandlers will return HookResult.Stop to hide the global killfeed,
+        // which would otherwise prevent the stat tracker from receiving the event!
         Core.GameEvent.HookPost<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerHurt>(damageReport.OnPlayerHurt);
         Core.GameEvent.HookPre<SwiftlyS2.Shared.GameEventDefinitions.EventPlayerDeath>(damageReport.OnPlayerDeath);
+
+        _playerEventHandlers.Register();
+        _messageSuppressionService.Register();
         
         _decalHook = Core.NetMessage.HookServerMessage<CMsgPlaceDecalEvent>(OnPlaceDecal);
 
@@ -71,6 +75,15 @@ public sealed class SwiftlyS2_Deathmatch : BasePlugin
                 var mapConfig = _serviceProvider.GetRequiredService<IMapConfigService>();
                 mapConfig.Load(mapName.Trim());
                 config.ApplyToConvars();
+            }
+
+            var eloScore = _serviceProvider.GetRequiredService<IEloScoreService>();
+            foreach (var player in Core.PlayerManager.GetAllPlayers())
+            {
+                if (player != null && player.IsValid && !player.IsFakeClient)
+                {
+                    _ = eloScore.OnClientConnectAsync(player);
+                }
             }
         });
 
