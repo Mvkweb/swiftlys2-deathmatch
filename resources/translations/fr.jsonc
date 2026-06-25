@@ -1,0 +1,47 @@
+{
+    // General
+    "dm.drops_disabled": "[green][Deathmatch][white] Les drops d'armes sont désactivés !",
+    "dm.available_commands": "[green]Commandes dispos :[white] !guns, !settings (Placeholder)",
+    "dm.equipped": "[grey]• [white]Tu as équipé [green]{0}[white] !",
+
+    // Headshot Mode
+    "dm.hs_enabled": "[grey]• [green]Mode Only Headshot : [white]ACTIVÉ",
+    "dm.hs_enabled_desc": "[grey]• [gold]Tu ne peux faire des dégâts qu'avec des headshots !",
+    "dm.hs_disabled": "[grey]• [lightred]Mode Only Headshot : [white]DÉSACTIVÉ",
+    "dm.hs_disabled_desc": "[grey]• [gold]Tes dégâts sont redevenus normaux.",
+
+    // Damage Reports
+    "dm.killed_by": "{0} Tué par [green]{1}[default] ([lightred]{2}[default])",
+    "dm.damage_report": "{0} Infligé : [green]{1}[default] dmg | Reçu : [lightred]{2}[default] dmg",
+
+    // Statistics Menu
+    "dm.stats_not_available": "[grey]• [white]Pas encore de stats. Joue un peu pour gagner de l'Elo !",
+    "dm.stats_title": "[grey]• [gold]Tes Statistiques :",
+    "dm.stats_elo": "[grey]• [white]Elo : [gold]{0} [white](Record : [gold]{1}[white])",
+    "dm.stats_kills": "[grey]• [white]Kills : [green]{0} [white]{1}",
+    "dm.stats_deaths": "[grey]• [white]Morts : [lightred]{0} [white]{1}",
+    "dm.stats_kdr": "[grey]• [white]KDR : [green]{0}",
+    "dm.stats_playtime": "[grey]• [white]Temps de jeu : [magenta]{0}h {1}m",
+    "dm.stats_reset": "[grey]• [green]Tes stats ont bien été remises à zéro ! [white](Le temps de jeu est conservé)",
+
+    // Edit Spawns Commands (Root Admins)
+    "dm.edit_mode_enabled": "Mode édition des spawns activé. Les spawns sont visibles et les bots sont gelés.",
+    "dm.edit_mode_disabled": "Mode édition désactivé. Spawns masqués et les bots bougent à nouveau.",
+    "dm.edit_require_mode": "Tu dois être en mode édition. Tape !editspawns d'abord.",
+    "dm.edit_add_usage": "Utilisation : !addspawn <T/CT>",
+    "dm.edit_add_invalid_team": "Équipe invalide. Utilise T ou CT.",
+    "dm.edit_must_be_player": "Tu dois être un joueur pour ajouter un spawn.",
+    "dm.edit_pawn_not_found": "Pawn du joueur introuvable.",
+    "dm.edit_pos_not_found": "Impossible de trouver ta position ou ta rotation.",
+    "dm.edit_add_success": "Spawn {0} ajouté pour l'équipe {1}.",
+    "dm.edit_remove_usage": "Utilisation : !remove <id>",
+    "dm.edit_invalid_id": "ID de spawn invalide.",
+    "dm.edit_remove_success": "Spawn {0} supprimé.",
+    "dm.edit_spawn_not_found": "Spawn {0} introuvable.",
+    "dm.edit_name_usage": "Utilisation : !namespawn <id> <nom>",
+    "dm.edit_name_success": "Spawn {0} renommé en '{1}'.",
+    "dm.edit_goto_usage": "Utilisation : !gotospawn <id>",
+    "dm.edit_goto_success": "Téléporté au spawn {0}.",
+    "dm.edit_save_no_map": "Aucune config de map chargée.",
+    "dm.edit_save_success": "Les spawns ont été sauvegardés dans la config de la map."
+}

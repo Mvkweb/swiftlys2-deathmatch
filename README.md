@@ -57,13 +57,12 @@ A lightweight, high-performance Deathmatch plugin for Counter-Strike 2, built on
 ## Database Configuration
 
 For the Elo system and stats to save, you **must** configure a database connection in Swiftly's global database config.
-Open your server's `addons/swiftly/configs/databases.jsonc` file and add the `"deathmatch_elo"` connection under `Connections`:
+Open your server's `addons/swiftly/configs/databases.jsonc` file and add the `"deathmatch_elo"` connection under `connections`:
 
 ```json
 {
     "default_connection": "default",
     "connections": {
-        "default": "mysql://test:test@127.0.0.1:3306/swiftly",
         "deathmatch_elo": "sqlite://deathmatch_elo.db"
     }
 }

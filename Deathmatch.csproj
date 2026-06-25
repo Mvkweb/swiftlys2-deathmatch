@@ -10,7 +10,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AssemblyName>SwiftlyS2_Deathmatch</AssemblyName>
     <OutputPath>$(MSBuildThisFileDirectory)build/</OutputPath>
-    <PublishDir>$(OutputPath)publish/Deathmatch</PublishDir>
+    <PublishDir>$(OutputPath)publish/SwiftlyS2_Deathmatch</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="resources/maps/**/*">
+    <Content Include="resources/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

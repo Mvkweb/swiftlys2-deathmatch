@@ -1,0 +1,47 @@
+{
+    // General
+    "dm.drops_disabled": "[green][Deathmatch][white] Weapon drops are disabled!",
+    "dm.available_commands": "[green]Available Commands:[white] !guns, !settings (Placeholder)",
+    "dm.equipped": "[grey]• [white]Equipped [green]{0}[white]!",
+
+    // Headshot Mode
+    "dm.hs_enabled": "[grey]• [green]Headshot Only Mode: [white]ENABLED",
+    "dm.hs_enabled_desc": "[grey]• [gold]You can only deal damage with headshots!",
+    "dm.hs_disabled": "[grey]• [lightred]Headshot Only Mode: [white]DISABLED",
+    "dm.hs_disabled_desc": "[grey]• [gold]Your damage has returned to normal.",
+
+    // Damage Reports
+    "dm.killed_by": "{0} Killed by [green]{1}[default] ([lightred]{2}[default])",
+    "dm.damage_report": "{0} Gave: [green]{1}[default] dmg | Took: [lightred]{2}[default] dmg",
+
+    // Statistics Menu
+    "dm.stats_not_available": "[grey]• [white]No stats available yet. Start playing to earn Elo!",
+    "dm.stats_title": "[grey]• [gold]Your Statistics:",
+    "dm.stats_elo": "[grey]• [white]Elo Rating: [gold]{0} [white](Peak: [gold]{1}[white])",
+    "dm.stats_kills": "[grey]• [white]Kills: [green]{0} [white]{1}",
+    "dm.stats_deaths": "[grey]• [white]Deaths: [lightred]{0} [white]{1}",
+    "dm.stats_kdr": "[grey]• [white]KDR: [green]{0}",
+    "dm.stats_playtime": "[grey]• [white]Playtime: [magenta]{0}h {1}m",
+    "dm.stats_reset": "[grey]• [green]Your stats have been successfully reset! [white](Playtime preserved)",
+
+    // Edit Spawns Commands (Root Admins)
+    "dm.edit_mode_enabled": "Spawn editing mode enabled. Spawns are now visible and bots are frozen.",
+    "dm.edit_mode_disabled": "Spawn editing mode disabled. Beams hidden and bots are active.",
+    "dm.edit_require_mode": "You must be in spawn edit mode. Use !editspawns first.",
+    "dm.edit_add_usage": "Usage: !addspawn <T/CT>",
+    "dm.edit_add_invalid_team": "Invalid team. Use T or CT.",
+    "dm.edit_must_be_player": "You must be a player to add a spawn.",
+    "dm.edit_pawn_not_found": "Player pawn not found.",
+    "dm.edit_pos_not_found": "Could not determine player position or rotation.",
+    "dm.edit_add_success": "Added spawn {0} for team {1}.",
+    "dm.edit_remove_usage": "Usage: !remove <id>",
+    "dm.edit_invalid_id": "Invalid spawn ID.",
+    "dm.edit_remove_success": "Removed spawn {0}.",
+    "dm.edit_spawn_not_found": "Spawn {0} not found.",
+    "dm.edit_name_usage": "Usage: !namespawn <id> <name>",
+    "dm.edit_name_success": "Named spawn {0} to '{1}'.",
+    "dm.edit_goto_usage": "Usage: !gotospawn <id>",
+    "dm.edit_goto_success": "Teleported to spawn {0}.",
+    "dm.edit_save_no_map": "No map config loaded.",
+    "dm.edit_save_success": "Spawns saved to map config file."
+}

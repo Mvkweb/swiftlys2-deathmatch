@@ -107,8 +107,9 @@ public sealed class DamageReportService : IDamageReportService
                         damageFromAttacker = dmgFrom;
 
                     var weaponName = weapon.Replace("weapon_", "");
-                    victim.SendChat($"{prefix} Killed by [green]{attacker.Controller.PlayerName}[default] ([lightred]{weaponName}[default])");
-                    victim.SendChat($"{prefix} Gave: [green]{damageToAttacker}[default] dmg | Took: [lightred]{damageFromAttacker}[default] dmg");
+                    var localizer = _core.Translation.GetPlayerLocalizer(victim);
+                    victim.SendChat(localizer["dm.killed_by", prefix, attacker.Controller.PlayerName, weaponName]);
+                    victim.SendChat(localizer["dm.damage_report", prefix, damageToAttacker, damageFromAttacker]);
                 }
             }
             else if (attackerKey != victimKey && attackerKey == 0) // e.g. world spawn, falling

@@ -104,7 +104,8 @@ public sealed class CommandHandlers
 
         // Give the item, the persistency engine will automatically save it upon death
         itemServices.GiveItem(weaponDesignerName);
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]Equipped [green]{weaponDesignerName.Replace("weapon_", "")}[white]!");
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
+        player.SendMessage(MessageType.Chat, localizer["dm.equipped", weaponDesignerName.Replace("weapon_", "")]);
     }
 
     private bool IsSecondaryWeapon(string weaponName)
@@ -130,24 +131,40 @@ public sealed class CommandHandlers
 
     private void EditSpawns(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
         _spawnViz.ShowSpawns();
         _core.Engine.ExecuteCommand("sv_cheats 1");
         _core.Engine.ExecuteCommand("bot_zombie 1");
         _core.Engine.ExecuteCommand("bot_stop 1");
-        context.Reply("Spawn editing mode enabled. Spawns are now visible and bots are frozen.");
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
+        context.Reply(localizer["dm.edit_mode_enabled"]);
     }
 
     private void AddSpawn(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         if (!_spawnViz.IsVisible)
         {
-            context.Reply("You must be in spawn edit mode. Use !editspawns first.");
+            context.Reply(localizer["dm.edit_require_mode"]);
             return;
         }
 
         if (context.Args.Length < 1)
         {
-            context.Reply("Usage: !addspawn <T/CT>");
+            context.Reply(localizer["dm.edit_add_usage"]);
             return;
         }
 
@@ -157,143 +174,173 @@ public sealed class CommandHandlers
         else if (teamStr == "ct") team = Team.CT;
         else
         {
-            context.Reply("Invalid team. Use T or CT.");
-            return;
-        }
-
-        var player = context.Sender;
-        if (player is null || !player.IsValid)
-        {
-            context.Reply("You must be a player to add a spawn.");
+            context.Reply(localizer["dm.edit_add_invalid_team"]);
             return;
         }
 
         var pawn = player.PlayerPawn;
         if (pawn is null || !pawn.IsValid)
         {
-             context.Reply("Player pawn not found.");
+             context.Reply(localizer["dm.edit_pawn_not_found"]);
              return;
         }
 
         if (pawn.AbsOrigin is null || pawn.AbsRotation is null)
         {
-            context.Reply("Could not determine player position or rotation.");
+            context.Reply(localizer["dm.edit_pos_not_found"]);
             return;
         }
 
         var id = _mapConfig.AddSpawn(pawn.AbsOrigin.Value, pawn.AbsRotation.Value, team);
         _spawnViz.ShowSpawns();
-        context.Reply($"Added spawn {id} for team {team}.");
+        context.Reply(localizer["dm.edit_add_success", id, team]);
     }
 
     private void RemoveSpawn(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         if (!_spawnViz.IsVisible)
         {
-            context.Reply("You must be in spawn edit mode. Use !editspawns first.");
+            context.Reply(localizer["dm.edit_require_mode"]);
             return;
         }
 
         if (context.Args.Length < 1)
         {
-            context.Reply("Usage: !remove <id>");
+            context.Reply(localizer["dm.edit_remove_usage"]);
             return;
         }
 
         if (!int.TryParse(context.Args[0], out var id))
         {
-            context.Reply("Invalid spawn ID.");
+            context.Reply(localizer["dm.edit_invalid_id"]);
             return;
         }
 
         if (_mapConfig.RemoveSpawn(id))
         {
             _spawnViz.ShowSpawns();
-            context.Reply($"Removed spawn {id}.");
+            context.Reply(localizer["dm.edit_remove_success", id]);
         }
         else
         {
-            context.Reply($"Spawn {id} not found.");
+            context.Reply(localizer["dm.edit_spawn_not_found", id]);
         }
     }
 
     private void NameSpawn(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         if (!_spawnViz.IsVisible)
         {
-            context.Reply("You must be in spawn edit mode. Use !editspawns first.");
+            context.Reply(localizer["dm.edit_require_mode"]);
             return;
         }
 
         if (context.Args.Length < 2)
         {
-            context.Reply("Usage: !namespawn <id> <name>");
+            context.Reply(localizer["dm.edit_name_usage"]);
             return;
         }
 
         if (!int.TryParse(context.Args[0], out var id))
         {
-            context.Reply("Invalid spawn ID.");
+            context.Reply(localizer["dm.edit_invalid_id"]);
             return;
         }
 
         var name = context.Args[1];
         if (_mapConfig.NameSpawn(id, name))
         {
-            context.Reply($"Named spawn {id} to '{name}'.");
+            context.Reply(localizer["dm.edit_name_success", id, name]);
         }
         else
         {
-            context.Reply($"Spawn {id} not found.");
+            context.Reply(localizer["dm.edit_spawn_not_found", id]);
         }
     }
 
     private void GotoSpawn(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         if (context.Args.Length < 1)
         {
-            context.Reply("Usage: !gotospawn <id>");
+            context.Reply(localizer["dm.edit_goto_usage"]);
             return;
         }
 
         if (!int.TryParse(context.Args[0], out var id))
         {
-            context.Reply("Invalid spawn ID.");
+            context.Reply(localizer["dm.edit_invalid_id"]);
             return;
         }
 
         var spawn = _mapConfig.Spawns.FirstOrDefault(s => s.Id == id);
         if (spawn is null)
         {
-            context.Reply($"Spawn {id} not found.");
+            context.Reply(localizer["dm.edit_spawn_not_found", id]);
             return;
         }
 
-        var player = context.Sender;
-        if (player is null || !player.IsValid) return;
-
         player.Teleport(spawn.Position, spawn.Angle, Vector.Zero);
-        context.Reply($"Teleported to spawn {id}.");
+        context.Reply(localizer["dm.edit_goto_success", id]);
     }
 
     private void SaveSpawns(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         if (string.IsNullOrEmpty(_mapConfig.LoadedMapName))
         {
-             context.Reply("No map config loaded.");
+             context.Reply(localizer["dm.edit_save_no_map"]);
              return;
         }
         _mapConfig.Save(_mapConfig.LoadedMapName);
-        context.Reply("Spawns saved to map config file.");
+        context.Reply(localizer["dm.edit_save_success"]);
     }
 
     private void StopEditing(ICommandContext context)
     {
+        var player = context.Sender;
+        if (player is null || !player.IsValid)
+        {
+            context.Reply("You must be a player to execute this command.");
+            return;
+        }
+
         _spawnViz.HideSpawns();
         _core.Engine.ExecuteCommand("sv_cheats 0");
         _core.Engine.ExecuteCommand("bot_zombie 0");
         _core.Engine.ExecuteCommand("bot_stop 0");
-        context.Reply("Spawn editing mode disabled. Beams hidden and bots are active.");
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
+        context.Reply(localizer["dm.edit_mode_disabled"]);
     }
 
     private void ShowStats(ICommandContext context)
@@ -301,10 +348,11 @@ public sealed class CommandHandlers
         var player = context.Sender;
         if (player is null || !player.IsValid) return;
 
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         var stats = _eloScoreService.GetStats(player.SteamID);
         if (stats is null)
         {
-            context.Reply("[grey]• [white]No stats available yet. Start playing to earn Elo!");
+            context.Reply(localizer["dm.stats_not_available"]);
             return;
         }
 
@@ -316,12 +364,12 @@ public sealed class CommandHandlers
         string sessionDeaths = stats.SessionDeaths > 0 ? $"[[lightred]-{stats.SessionDeaths}[white]]" : "[[grey]0[white]]";
 
         player.SendMessage(MessageType.Chat, " ");
-        player.SendMessage(MessageType.Chat, "[grey]• [gold]Your Statistics:");
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]Elo Rating: [gold]{stats.Score} [white](Peak: [gold]{stats.PeakScore}[white])");
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]Kills: [green]{stats.TotalKills} [white]{sessionKills}");
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]Deaths: [lightred]{stats.TotalDeaths} [white]{sessionDeaths}");
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]KDR: [green]{kdr:F2}");
-        player.SendMessage(MessageType.Chat, $"[grey]• [white]Playtime: [magenta]{hours}h {minutes}m");
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_title"]);
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_elo", stats.Score, stats.PeakScore]);
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_kills", stats.TotalKills, sessionKills]);
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_deaths", stats.TotalDeaths, sessionDeaths]);
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_kdr", kdr.ToString("F2")]);
+        player.SendMessage(MessageType.Chat, localizer["dm.stats_playtime", hours, minutes]);
         player.SendMessage(MessageType.Chat, " ");
     }
 
@@ -330,8 +378,9 @@ public sealed class CommandHandlers
         var player = context.Sender;
         if (player is null || !player.IsValid) return;
 
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
         _ = _eloScoreService.ResetStatsAsync(player.SteamID);
-        context.Reply("[grey]• [green]Your stats have been successfully reset! [white](Playtime preserved)");
+        context.Reply(localizer["dm.stats_reset"]);
     }
 
     private void ToggleHeadshotMode(ICommandContext context)
@@ -340,19 +389,20 @@ public sealed class CommandHandlers
         if (player is null || !player.IsValid) return;
 
         bool isEnabled = _headshotMode.ToggleHeadshotMode(player.SteamID);
+        var localizer = _core.Translation.GetPlayerLocalizer(player);
 
         if (isEnabled)
         {
             player.SendMessage(MessageType.Chat, " ");
-            player.SendMessage(MessageType.Chat, "[grey]• [green]Headshot Only Mode: [white]ENABLED");
-            player.SendMessage(MessageType.Chat, "[grey]• [gold]You can only deal damage with headshots!");
+            player.SendMessage(MessageType.Chat, localizer["dm.hs_enabled"]);
+            player.SendMessage(MessageType.Chat, localizer["dm.hs_enabled_desc"]);
             player.SendMessage(MessageType.Chat, " ");
         }
         else
         {
             player.SendMessage(MessageType.Chat, " ");
-            player.SendMessage(MessageType.Chat, "[grey]• [lightred]Headshot Only Mode: [white]DISABLED");
-            player.SendMessage(MessageType.Chat, "[grey]• [gold]Your damage has returned to normal.");
+            player.SendMessage(MessageType.Chat, localizer["dm.hs_disabled"]);
+            player.SendMessage(MessageType.Chat, localizer["dm.hs_disabled_desc"]);
             player.SendMessage(MessageType.Chat, " ");
         }
     }
@@ -364,8 +414,9 @@ public sealed class CommandHandlers
             var player = _core.PlayerManager.GetPlayer(playerId);
             if (player != null && player.IsValid)
             {
-                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, "[green][Deathmatch][white] Weapon drops are disabled!");
-                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, "[green]Available Commands:[white] !guns, !settings (Placeholder)");
+                var localizer = _core.Translation.GetPlayerLocalizer(player);
+                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, localizer["dm.drops_disabled"]);
+                player.SendMessage(SwiftlyS2.Shared.Players.MessageType.Chat, localizer["dm.available_commands"]);
             }
             return HookResult.Stop;
         }
