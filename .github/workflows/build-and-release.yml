@@ -57,7 +57,7 @@ jobs:
           dotnet publish Deathmatch.csproj -c Release
           
           # Rename the auto-generated zip to include the version and commit hash
-          mv SwiftlyS2_Deathmatch.zip SwiftlyS2-Deathmatch-v${{ steps.version.outputs.version }}-${{ steps.git_info.outputs.short_sha }}.zip
+          mv build/SwiftlyS2_Deathmatch.zip SwiftlyS2-Deathmatch-v${{ steps.version.outputs.version }}-${{ steps.git_info.outputs.short_sha }}.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
