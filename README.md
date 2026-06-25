@@ -14,6 +14,8 @@ A lightweight, high-performance Deathmatch plugin for Counter-Strike 2, built on
 
 ## Commands
 
+### Admin Commands
+
 | Command | Description | Permission |
 | :--- | :--- | :--- |
 | `!editspawns` | Enter spawn editing mode and visualize current spawns. | `root` |
@@ -24,19 +26,58 @@ A lightweight, high-performance Deathmatch plugin for Counter-Strike 2, built on
 | `!savespawns` | Save all current spawns to the map configuration file. | `root` |
 | `!stopediting` | Exit editing mode and hide visual beams. | `root` |
 
+### Player Commands
+
+| Command | Description |
+| :--- | :--- |
+| `!stats` | View your current Elo rating, K/D ratio, and playtime. |
+| `!rs` | Reset your current session/total Elo statistics (preserves playtime). |
+| `!hs` / `!headshot` | Toggle Headshot Only mode (damage dealt only applies on headshots). |
+| `!ak` / `!ak47` | Immediately equip an AK-47. |
+| `!m4a1` / `!m4a1s` / `!m4s` | Immediately equip an M4A1-S. |
+| `!m4` / `!m4a4` | Immediately equip an M4A4. |
+| `!awp` | Immediately equip an AWP. |
+| `!deagle` | Immediately equip a Desert Eagle. |
+| `!aug` | Immediately equip an AUG. |
+| `!sg` | Immediately equip an SG 553. |
+| `!famas` | Immediately equip a FAMAS. |
+| `!galil` | Immediately equip a Galil AR. |
+| `!mp9` | Immediately equip an MP9. |
+| `!mac10` | Immediately equip a MAC-10. |
+| `!mp5` | Immediately equip an MP5-SD. |
+| `!glock` | Immediately equip a Glock-18. |
+| `!usp` | Immediately equip a USP-S. |
+
 ## Installation
 
 1. Ensure you have [SwiftlyS2](https://github.com/swiftlys2/swiftlys2) installed on your server.
 2. Download the latest release from the [Releases](https://github.com/Mvk/SwiftlyS2-Deathmatch/releases) page.
 3. Extract the contents into your `plugins/` directory.
-4. Spawns are stored in `resources/maps/<mapname>.json`.
 
-## Configuration
+## Database Configuration
 
-The plugin automatically applies the following settings on map load:
+For the Elo system and stats to save, you **must** configure a database connection in Swiftly's global database config.
+Open your server's `addons/swiftly/configs/databases.jsonc` file and add the `"deathmatch_elo"` connection under `Connections`:
+
+```json
+{
+    "default_connection": "default",
+    "connections": {
+        "default": "mysql://test:test@127.0.0.1:3306/swiftly",
+        "deathmatch_elo": "sqlite://deathmatch_elo.db"
+    }
+}
+```
+
+## Plugin Configuration
+
+A `config.jsonc` file will automatically generate in `addons/swiftly/configs/plugins/Deathmatch/` when the plugin first runs.
+The plugin also automatically enforces standard Deathmatch settings on map load:
 *   `mp_buy_anywhere 1`
 *   `mp_buytime 9999`
 *   `mp_free_armor 2`
+
+**Note:** The map-specific Spawn Editor features and commands (`!editspawns`, `!addspawn`, etc.) are currently **WIP (Work in Progress)**. Spawns will be stored in `addons/swiftly/plugins/Deathmatch/resources/maps/<mapname>.json`.
 
 ## Credits
 

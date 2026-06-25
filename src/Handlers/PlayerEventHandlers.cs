@@ -17,6 +17,7 @@ public sealed class PlayerEventHandlers
     private readonly IEloScoreService _eloScoreService;
     private readonly IDeathmatchConfigService _config;
     private readonly IWeaponLoadoutService _weaponLoadout;
+    private readonly IHeadshotModeService _headshotMode;
     private Guid _playerSpawnPostHook;
     private Guid _playerDeathPreHook;
     private Guid _playerHurtPreHook;
@@ -25,13 +26,14 @@ public sealed class PlayerEventHandlers
     private Guid _weaponFireHook;
     private bool _isSimulatedKillfeed = false;
 
-    public PlayerEventHandlers(ISwiftlyCore core, ISpawnEvaluatorService spawnEvaluator, IEloScoreService eloScoreService, IDeathmatchConfigService config, IWeaponLoadoutService weaponLoadout)
+    public PlayerEventHandlers(ISwiftlyCore core, ISpawnEvaluatorService spawnEvaluator, IEloScoreService eloScoreService, IDeathmatchConfigService config, IWeaponLoadoutService weaponLoadout, IHeadshotModeService headshotMode)
     {
         _core = core;
         _spawnEvaluator = spawnEvaluator;
         _eloScoreService = eloScoreService;
         _config = config;
         _weaponLoadout = weaponLoadout;
+        _headshotMode = headshotMode;
     }
 
     public void Register()
@@ -42,10 +44,14 @@ public sealed class PlayerEventHandlers
         _playerConnectFullHook = _core.GameEvent.HookPost<EventPlayerConnectFull>(OnPlayerConnectFull);
         _playerDisconnectHook = _core.GameEvent.HookPost<EventPlayerDisconnect>(OnPlayerDisconnect);
         _weaponFireHook = _core.GameEvent.HookPost<EventWeaponFire>(OnWeaponFire);
+
+        _core.GameHooks.Entities.TakeDamage.Pre += OnTakeDamagePre;
     }
 
     public void Unregister()
     {
+        _core.GameHooks.Entities.TakeDamage.Pre -= OnTakeDamagePre;
+
         if (_playerSpawnPostHook != Guid.Empty)
         {
             _core.GameEvent.Unhook(_playerSpawnPostHook);
@@ -195,9 +201,13 @@ public sealed class PlayerEventHandlers
         // Respawn immediately — new pawn created, old one dies silently (skips ragdoll entirely)
         _core.Scheduler.DelayBySeconds(0.25f, () =>
         {
-             if (victim.IsValid)
+             if (victim.IsValid && victim.Controller != null)
              {
-                 victim.Respawn();
+                 var team = (Team)victim.Controller.TeamNum;
+                 if (team == Team.T || team == Team.CT)
+                 {
+                     victim.Respawn();
+                 }
              }
         });
 
@@ -241,5 +251,38 @@ public sealed class PlayerEventHandlers
             }
         }
         return HookResult.Continue;
+    }
+
+    private void OnTakeDamagePre(ref SwiftlyS2.Shared.GameHooks.TakeDamageEntityPreContext ctx)
+    {
+        var attackerHandle = ctx.Params.Info.Attacker;
+        if (!attackerHandle.IsValid) return;
+
+        var attackerEntity = attackerHandle.Value;
+        if (attackerEntity == null || !attackerEntity.IsValidEntity) return;
+
+        IPlayer? attackerPlayer = null;
+        foreach (var p in _core.PlayerManager.GetAllPlayers())
+        {
+            if (p != null && p.IsValid && p.PlayerPawn != null && p.PlayerPawn.IsValidEntity)
+            {
+                if (p.PlayerPawn.Index == attackerEntity.Index)
+                {
+                    attackerPlayer = p;
+                    break;
+                }
+            }
+        }
+
+        if (attackerPlayer is null) return;
+
+        if (_headshotMode.IsHeadshotModeEnabled(attackerPlayer.SteamID))
+        {
+            // HitGroup_t.HITGROUP_HEAD is usually 1
+            if ((int)ctx.Params.Info.ActualHitGroup != 1)
+            {
+                ctx.Params.Info.Damage = 0f;
+            }
+        }
     }
 }

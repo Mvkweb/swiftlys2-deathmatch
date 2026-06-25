@@ -1,0 +1,119 @@
+name: Build and Release Workflow
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract git info
+        id: git_info
+        run: |
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          
+          # Clean branch name for artifact naming (e.g. replace / with -)
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          BRANCH_NAME="${BRANCH_NAME////-}"
+          
+          # If it's a PR, GITHUB_REF is refs/pull/..., so fallback to github.head_ref
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          fi
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Extract version from Deathmatch.cs
+        id: version
+        run: |
+          VERSION=$(grep -E 'Version\s*=\s*"[^"]+"' src/Deathmatch.cs | grep -o '"[^"]\+"' | head -1 | tr -d '"')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not find PluginMetadata Version"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore Deathmatch.csproj
+
+      - name: Build and Package
+        run: |
+          # Publish triggers the custom CreateZip target in Deathmatch.csproj
+          dotnet publish Deathmatch.csproj -c Release
+          
+          # Rename the auto-generated zip to include the version and commit hash
+          mv SwiftlyS2_Deathmatch.zip SwiftlyS2-Deathmatch-v${{ steps.version.outputs.version }}-${{ steps.git_info.outputs.short_sha }}.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftlyS2-Deathmatch-${{ steps.git_info.outputs.branch_name }}-${{ steps.git_info.outputs.short_sha }}
+          path: SwiftlyS2-Deathmatch-v${{ steps.version.outputs.version }}-${{ steps.git_info.outputs.short_sha }}.zip
+
+      - name: Determine tag and format Changelog
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, '[beta]'))
+        id: release_info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v$VERSION"
+          
+          if [[ "${{ github.event.head_commit.message }}" == *"[beta]"* ]]; then
+            TAG="v$VERSION-beta"
+          fi
+          
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          # Initialize changelog file
+          echo "🎉 **SwiftlyS2 Deathmatch Release $TAG**" > changelog.md
+          echo "" >> changelog.md
+          echo "### Changelog" >> changelog.md
+          
+          if [ -n "$PREV_TAG" ]; then
+            # Extract commits since previous tag
+            git log ${PREV_TAG}..HEAD --pretty=format:"* %s (\`%h\`) by %an" >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+            echo "**Full Compare**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}" >> changelog.md
+          else
+            # No previous tag, just grab last 10 commits
+            git log -10 --pretty=format:"* %s (\`%h\`) by %an" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && (contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, '[beta]'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.release_info.outputs.tag }}"
+          
+          PRERELEASE_FLAG=""
+          if [[ "${{ github.event.head_commit.message }}" == *"[beta]"* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          
+          gh release create "$TAG" \
+            --title "SwiftlyS2-Deathmatch | $TAG" \
+            --notes-file changelog.md \
+            $PRERELEASE_FLAG \
+            SwiftlyS2-Deathmatch-v${{ steps.version.outputs.version }}-${{ steps.git_info.outputs.short_sha }}.zip

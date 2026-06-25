@@ -9,12 +9,14 @@ namespace SwiftlyS2_Deathmatch.Services;
 public sealed class WeaponLoadoutService : IWeaponLoadoutService
 {
     private readonly ISwiftlyCore _core;
+    private readonly IDeathmatchConfigService _config;
     // Maps SteamID/Slot to a list of weapon DesignerNames
     private readonly Dictionary<ulong, List<string>> _savedLoadouts = new();
 
-    public WeaponLoadoutService(ISwiftlyCore core)
+    public WeaponLoadoutService(ISwiftlyCore core, IDeathmatchConfigService config)
     {
         _core = core;
+        _config = config;
     }
 
     private ulong GetPlayerKey(IPlayer player)
@@ -37,16 +39,25 @@ public sealed class WeaponLoadoutService : IWeaponLoadoutService
             var wpn = handle.Value;
             if (wpn is not null && !string.IsNullOrEmpty(wpn.DesignerName))
             {
-                // Ignore knife, c4, healthshots, and generic items that shouldn't be restocked implicitly
                 var name = wpn.DesignerName.ToLower();
+                
+                // CS2 shares classnames for certain loadout variants. 
+                // We use the ItemDefinitionIndex to get the exact weapon they were holding!
+                var defIndex = wpn.AttributeManager.Item.ItemDefinitionIndex;
+                if (defIndex == 60) name = "weapon_m4a1_silencer";
+                else if (defIndex == 61) name = "weapon_usp_silencer";
+                else if (defIndex == 23) name = "weapon_mp5sd";
+                else if (defIndex == 63) name = "weapon_cz75a";
+                else if (defIndex == 64) name = "weapon_revolver";
+
+                // Ignore knife, c4, healthshots, and generic items that shouldn't be restocked implicitly
                 if (name == "weapon_knife" || name == "weapon_c4" || name == "weapon_healthshot" || name == "weapon_taser")
                 {
                     continue;
                 }
-                
                 // Grenades are optional, but usually deathmatch doesn't restock grenades unless bought.
                 // If they bought it and died with it, they get it back.
-                weaponsToSave.Add(wpn.DesignerName);
+                weaponsToSave.Add(name);
             }
         }
 
@@ -57,17 +68,46 @@ public sealed class WeaponLoadoutService : IWeaponLoadoutService
     {
         if (player is null || !player.IsValid || player.PlayerPawn is null) return;
 
-        var key = GetPlayerKey(player);
-        if (!_savedLoadouts.TryGetValue(key, out var savedWeapons) || savedWeapons.Count == 0) return;
-
         var itemServices = player.PlayerPawn.ItemServices;
         if (itemServices is null) return;
+
+        // If it's a bot and bot loadouts are enabled
+        if (player.IsFakeClient && _config.Config.EnableBotsLoadout)
+        {
+            var weaponServicesBot = player.PlayerPawn.WeaponServices;
+            if (weaponServicesBot is not null)
+            {
+                foreach (var handle in weaponServicesBot.MyWeapons.ToList())
+                {
+                    var wpn = handle.Value;
+                    if (wpn is not null && !string.IsNullOrEmpty(wpn.DesignerName))
+                    {
+                        var name = wpn.DesignerName.ToLower();
+                        if (name != "weapon_knife" && name != "weapon_c4")
+                        {
+                            weaponServicesBot.RemoveWeapon(wpn);
+                        }
+                    }
+                }
+            }
+
+            var team = (Team)player.Controller.TeamNum;
+            var weaponsToGive = team == Team.T ? _config.Config.TBotsWeapons : _config.Config.CTBotsWeapons;
+            
+            foreach (var wpnName in weaponsToGive)
+            {
+                itemServices.GiveItem(wpnName);
+            }
+            return;
+        }
+
+        var key = GetPlayerKey(player);
+        if (!_savedLoadouts.TryGetValue(key, out var savedWeapons) || savedWeapons.Count == 0) return;
 
         // Remove the default weapons they just spawned with (e.g., glock/usp)
         var weaponServices = player.PlayerPawn.WeaponServices;
         if (weaponServices is not null)
         {
-            // We iterate safely by copying to list
             foreach (var handle in weaponServices.MyWeapons.ToList())
             {
                 var wpn = handle.Value;

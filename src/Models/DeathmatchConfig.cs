@@ -15,6 +15,10 @@ public sealed class DeathmatchConfig
     public int MaxHealth { get; set; } = 100;
     public bool RefillAmmoOnKill { get; set; } = true;
 
+    public bool EnableBotsLoadout { get; set; } = true;
+    public List<string> TBotsWeapons { get; set; } = new() { "weapon_ak47" };
+    public List<string> CTBotsWeapons { get; set; } = new() { "weapon_m4a1_silencer" };
+
     public bool EnableEloSystem { get; set; } = true;
     public int EloOnKill { get; set; } = 2;
     public int EloOnHeadshot { get; set; } = 3;

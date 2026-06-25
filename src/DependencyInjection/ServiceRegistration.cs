@@ -18,6 +18,7 @@ public static class ServiceRegistration
         services.AddSingleton<IEloDatabaseService, EloDatabaseService>();
         services.AddSingleton<IEloScoreService, EloScoreService>();
         services.AddSingleton<IWeaponLoadoutService, WeaponLoadoutService>();
+        services.AddSingleton<IHeadshotModeService, HeadshotModeService>();
         
         services.AddSingleton<CommandHandlers>();
         services.AddSingleton<MapEventHandlers>();

@@ -12,7 +12,7 @@ namespace SwiftlyS2_Deathmatch.Services;
 public sealed class DeathmatchConfigService : IDeathmatchConfigService
 {
     private readonly ISwiftlyCore _core;
-    private const string ConfigFileName = "config.json";
+    private const string ConfigFileName = "config.jsonc";
     private const string SectionName = "deathmatch";
 
     public DeathmatchConfig Config { get; private set; } = new();
@@ -26,26 +26,92 @@ public sealed class DeathmatchConfigService : IDeathmatchConfigService
     {
         try
         {
-            _core.Configuration.InitializeJsonWithModel<DeathmatchConfig>(ConfigFileName, SectionName);
-            
             var configPath = _core.Configuration.GetConfigPath(ConfigFileName);
-            if (File.Exists(configPath))
+            var defaultJsonc = @"// SwiftlyS2 Deathmatch Configuration
+{
+  ""deathmatch"": {
+    // General Settings
+    ""enableBuyAnywhere"": true,
+    ""buyTime"": 600000,
+    ""freeArmor"": 1,
+    ""chatPrefix"": ""[green]Deathmatch[default]"",
+    ""enableDamageReports"": true,
+
+    // Health & Ammo
+    ""giveMediShotOnKill"": false,
+    ""removeMediShots"": true,
+    ""healthOnKill"": 20,
+    ""maxHealth"": 100,
+    ""refillAmmoOnKill"": true,
+    ""onlyShowPlayerKillfeed"": true,
+
+    // Bot Loadout System
+    ""enableBotsLoadout"": true,
+    // What weapons should T Bots get?
+    ""tBotsWeapons"": [
+      ""weapon_ak47""
+    ],
+    // What weapons should CT Bots get?
+    ""ctBotsWeapons"": [
+      ""weapon_m4a1_silencer""
+    ],
+
+    // Elo System
+    ""enableEloSystem"": true,
+    ""eloOnKill"": 2,
+    ""eloOnHeadshot"": 3,
+    ""eloOnDeath"": -2,
+    
+    // Database connection string name from database.jsonc
+    ""databaseType"": ""sqlite"",
+    ""databaseConnection"": ""deathmatch_elo""
+  }
+}";
+
+            if (!File.Exists(configPath))
             {
-                var json = File.ReadAllText(configPath);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty(SectionName, out var section))
-                {
-                    var config = JsonSerializer.Deserialize<DeathmatchConfig>(section.GetRawText(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                    if (config is not null)
-                    {
-                        Config = config;
-                    }
-                }
+                File.WriteAllText(configPath, defaultJsonc);
             }
 
-            // Reserialize back to disk to populate any missing fields automatically
-            var newJson = JsonSerializer.Serialize(new { deathmatch = Config }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            File.WriteAllText(configPath, newJson);
+            var json = File.ReadAllText(configPath);
+            var options = new JsonSerializerOptions 
+            { 
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                AllowTrailingCommas = true
+            };
+
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            if (doc.RootElement.TryGetProperty(SectionName, out var section))
+            {
+                var config = JsonSerializer.Deserialize<DeathmatchConfig>(section.GetRawText(), options);
+                if (config is not null)
+                {
+                    Config = config;
+                }
+
+                // Check if any fields are missing by comparing reserialized string length roughly
+                // Or rather, we just won't rewrite unless a new update explicitly requires it. 
+                // We'll reserialize and check if the loaded JSON is missing keys that the default has.
+                var defaultDoc = JsonDocument.Parse(defaultJsonc, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
+                var defaultSection = defaultDoc.RootElement.GetProperty(SectionName);
+                
+                bool needsUpdate = false;
+                foreach (var prop in defaultSection.EnumerateObject())
+                {
+                    if (!section.TryGetProperty(prop.Name, out _))
+                    {
+                        needsUpdate = true;
+                        break;
+                    }
+                }
+
+                if (needsUpdate)
+                {
+                    var newJson = JsonSerializer.Serialize(new { deathmatch = Config }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    File.WriteAllText(configPath, newJson);
+                }
+            }
         }
         catch (Exception ex)
         {

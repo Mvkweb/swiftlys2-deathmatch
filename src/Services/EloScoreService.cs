@@ -113,6 +113,30 @@ public sealed class EloScoreService : IEloScoreService
 
     public PlayerStats? GetStats(ulong steamId)
     {
-        return _playerStats.TryGetValue(steamId, out var stats) ? stats : null;
+        if (_playerStats.TryGetValue(steamId, out var stats))
+        {
+            return stats;
+        }
+        return null;
+    }
+
+    public async Task ResetStatsAsync(ulong steamId)
+    {
+        if (!_playerStats.TryGetValue(steamId, out var stats)) return;
+
+        stats.Score = 0;
+        stats.PeakScore = 0;
+        stats.TotalKills = 0;
+        stats.TotalDeaths = 0;
+        stats.SessionKills = 0;
+        stats.SessionDeaths = 0;
+
+        var player = _core.PlayerManager.GetAllPlayers().FirstOrDefault(p => p != null && p.IsValid && p.SteamID == steamId);
+        if (player != null)
+        {
+            UpdatePlayerControllerScore(player, 0);
+        }
+
+        await _db.SavePlayerStatsAsync(steamId, stats);
     }
 }

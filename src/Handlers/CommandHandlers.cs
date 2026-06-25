@@ -13,15 +13,17 @@ public sealed class CommandHandlers
     private readonly ISpawnVisualizationService _spawnViz;
     private readonly ISwiftlyCore _core;
     private readonly IEloScoreService _eloScoreService;
+    private readonly IHeadshotModeService _headshotMode;
     private readonly List<Guid> _commandGuids = new();
     private Guid _clientCmdHook;
 
-    public CommandHandlers(IMapConfigService mapConfig, ISpawnVisualizationService spawnViz, ISwiftlyCore core, IEloScoreService eloScoreService)
+    public CommandHandlers(IMapConfigService mapConfig, ISpawnVisualizationService spawnViz, ISwiftlyCore core, IEloScoreService eloScoreService, IHeadshotModeService headshotMode)
     {
         _mapConfig = mapConfig;
         _spawnViz = spawnViz;
         _core = core;
         _eloScoreService = eloScoreService;
+        _headshotMode = headshotMode;
     }
 
     public void Register()
@@ -34,8 +36,81 @@ public sealed class CommandHandlers
         _commandGuids.Add(_core.Command.RegisterCommand("savespawns", SaveSpawns, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("stopediting", StopEditing, permission: "root"));
         _commandGuids.Add(_core.Command.RegisterCommand("stats", ShowStats));
+        _commandGuids.Add(_core.Command.RegisterCommand("rs", ResetStats));
+        _commandGuids.Add(_core.Command.RegisterCommand("hs", ToggleHeadshotMode));
+        _commandGuids.Add(_core.Command.RegisterCommand("headshot", ToggleHeadshotMode));
+
+        // Weapon Allocators
+        RegisterWeaponCommand("ak", "weapon_ak47");
+        RegisterWeaponCommand("ak47", "weapon_ak47");
+        RegisterWeaponCommand("m4", "weapon_m4a1");
+        RegisterWeaponCommand("m4a4", "weapon_m4a1");
+        RegisterWeaponCommand("m4a1", "weapon_m4a1_silencer");
+        RegisterWeaponCommand("m4a1s", "weapon_m4a1_silencer");
+        RegisterWeaponCommand("m4s", "weapon_m4a1_silencer");
+        RegisterWeaponCommand("awp", "weapon_awp");
+        RegisterWeaponCommand("deagle", "weapon_deagle");
+        RegisterWeaponCommand("aug", "weapon_aug");
+        RegisterWeaponCommand("sg", "weapon_sg556");
+        RegisterWeaponCommand("famas", "weapon_famas");
+        RegisterWeaponCommand("galil", "weapon_galilar");
+        RegisterWeaponCommand("mp9", "weapon_mp9");
+        RegisterWeaponCommand("mac10", "weapon_mac10");
+        RegisterWeaponCommand("mp5", "weapon_mp5sd");
+        RegisterWeaponCommand("glock", "weapon_glock");
+        RegisterWeaponCommand("usp", "weapon_usp_silencer");
 
         _clientCmdHook = _core.Command.HookClientCommand(OnClientCommand);
+    }
+
+    private void RegisterWeaponCommand(string commandName, string weaponDesignerName)
+    {
+        _commandGuids.Add(_core.Command.RegisterCommand(commandName, (ctx) => GiveWeapon(ctx, weaponDesignerName)));
+    }
+
+    private void GiveWeapon(ICommandContext context, string weaponDesignerName)
+    {
+        var player = context.Sender;
+        if (player is null || !player.IsValid) return;
+
+        var pawn = player.PlayerPawn;
+        if (pawn is null || !pawn.IsValid) return;
+
+        var itemServices = pawn.ItemServices;
+        if (itemServices is null) return;
+        
+        var weaponServices = pawn.WeaponServices;
+        if (weaponServices is null) return;
+
+        bool isRequestingSecondary = IsSecondaryWeapon(weaponDesignerName);
+
+        foreach (var handle in weaponServices.MyWeapons.ToList())
+        {
+            var wpn = handle.Value;
+            if (wpn is not null && !string.IsNullOrEmpty(wpn.DesignerName))
+            {
+                var name = wpn.DesignerName.ToLower();
+                if (name == "weapon_knife" || name == "weapon_c4" || name == "weapon_taser" || name == "weapon_healthshot" || name.Contains("grenade") || name.Contains("flashbang") || name.Contains("molotov") || name.Contains("decoy"))
+                    continue;
+
+                bool isExistingSecondary = IsSecondaryWeapon(name);
+                
+                if (isRequestingSecondary == isExistingSecondary)
+                {
+                    weaponServices.RemoveWeapon(wpn);
+                }
+            }
+        }
+
+        // Give the item, the persistency engine will automatically save it upon death
+        itemServices.GiveItem(weaponDesignerName);
+        player.SendMessage(MessageType.Chat, $"[grey]• [white]Equipped [green]{weaponDesignerName.Replace("weapon_", "")}[white]!");
+    }
+
+    private bool IsSecondaryWeapon(string weaponName)
+    {
+        var secondaries = new HashSet<string> { "weapon_deagle", "weapon_elite", "weapon_fiveseven", "weapon_glock", "weapon_tec9", "weapon_hkp2000", "weapon_usp_silencer", "weapon_p250", "weapon_cz75a", "weapon_revolver" };
+        return secondaries.Contains(weaponName.ToLower());
     }
 
     public void Unregister()
@@ -248,6 +323,38 @@ public sealed class CommandHandlers
         player.SendMessage(MessageType.Chat, $"[grey]• [white]KDR: [green]{kdr:F2}");
         player.SendMessage(MessageType.Chat, $"[grey]• [white]Playtime: [magenta]{hours}h {minutes}m");
         player.SendMessage(MessageType.Chat, " ");
+    }
+
+    private void ResetStats(ICommandContext context)
+    {
+        var player = context.Sender;
+        if (player is null || !player.IsValid) return;
+
+        _ = _eloScoreService.ResetStatsAsync(player.SteamID);
+        context.Reply("[grey]• [green]Your stats have been successfully reset! [white](Playtime preserved)");
+    }
+
+    private void ToggleHeadshotMode(ICommandContext context)
+    {
+        var player = context.Sender;
+        if (player is null || !player.IsValid) return;
+
+        bool isEnabled = _headshotMode.ToggleHeadshotMode(player.SteamID);
+
+        if (isEnabled)
+        {
+            player.SendMessage(MessageType.Chat, " ");
+            player.SendMessage(MessageType.Chat, "[grey]• [green]Headshot Only Mode: [white]ENABLED");
+            player.SendMessage(MessageType.Chat, "[grey]• [gold]You can only deal damage with headshots!");
+            player.SendMessage(MessageType.Chat, " ");
+        }
+        else
+        {
+            player.SendMessage(MessageType.Chat, " ");
+            player.SendMessage(MessageType.Chat, "[grey]• [lightred]Headshot Only Mode: [white]DISABLED");
+            player.SendMessage(MessageType.Chat, "[grey]• [gold]Your damage has returned to normal.");
+            player.SendMessage(MessageType.Chat, " ");
+        }
     }
 
     public HookResult OnClientCommand(int playerId, string commandLine)

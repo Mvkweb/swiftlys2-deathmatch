@@ -12,4 +12,5 @@ public interface IEloScoreService
     void DeductDeathScore(IPlayer victim);
     void ApplyCachedScore(IPlayer player);
     PlayerStats? GetStats(ulong steamId);
+    Task ResetStatsAsync(ulong steamId);
 }
