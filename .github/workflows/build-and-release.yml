@@ -35,7 +35,7 @@ jobs:
       - name: Extract version from Deathmatch.cs
         id: version
         run: |
-          VERSION=$(grep -E 'Version\s*=\s*"[^"]+"' src/Deathmatch.cs | grep -o '"[^"]\+"' | head -1 | tr -d '"')
+          VERSION=$(grep -oP '(?<=Version = ")[^"]+' src/Deathmatch.cs | head -1)
           if [ -z "$VERSION" ]; then
             echo "::error::Could not find PluginMetadata Version"
             exit 1
